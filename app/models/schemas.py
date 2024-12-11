@@ -1,28 +1,20 @@
 # app/models/schemas.py
-from pydantic import BaseModel, Field, GetJsonSchemaHandler
-from pydantic.json_schema import JsonSchemaValue
-from typing import Optional, Any, Annotated
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, Annotated
 from datetime import datetime
 from enum import Enum
 from bson import ObjectId
 
 class PyObjectId(str):
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not isinstance(v, (str, ObjectId)):
+    def validate(cls, value):
+        if not isinstance(value, (str, ObjectId)):
             raise ValueError("Invalid ObjectId")
-        return str(v)
+        return str(value)
 
     @classmethod
-    def __get_pydantic_json_schema__(
-        cls, schema: JsonSchemaValue, handler: GetJsonSchemaHandler
-    ) -> JsonSchemaValue:
-        schema.update(type="string")
-        return schema
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        return handler("string")
 
 class TextStatus(str, Enum):
     PENDING = "pending"
@@ -37,7 +29,10 @@ class TrainingText(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    model_config = dict(json_encoders={ObjectId: str})
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
 
 class TrainingTextCreate(BaseModel):
     client_id: str
@@ -51,12 +46,12 @@ class TrainingTextUpdate(BaseModel):
     status: Optional[TextStatus] = None
 
 class TrainingTextInDB(TrainingText):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: PyObjectId = Field(alias="_id", default_factory=PyObjectId)
 
-    model_config = dict(
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
         json_encoders={ObjectId: str},
-        populate_by_name=True,
-        arbitrary_types_allowed=True
+        populate_by_name=True
     )
 
 class TTSRequest(BaseModel):
