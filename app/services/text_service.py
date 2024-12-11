@@ -15,15 +15,16 @@ class TextService:
         self.collection = self.db.training_texts
 
     async def create_text(self, text: TrainingTextCreate) -> TrainingTextInDB:
-        text_dict = text.dict()
-        text_dict["created_at"] = datetime.utcnow()
-        text_dict["updated_at"] = datetime.utcnow()
-        text_dict["status"] = "pending"
-        
         try:
+            text_dict = text.model_dump()
+            text_dict["created_at"] = datetime.utcnow()
+            text_dict["updated_at"] = datetime.utcnow()
+            text_dict["status"] = "pending"
+            
             result = await self.collection.insert_one(text_dict)
             created_text = await self.collection.find_one({"_id": result.inserted_id})
             if created_text:
+                created_text["_id"] = str(created_text["_id"])
                 return TrainingTextInDB(**created_text)
             raise HTTPException(status_code=500, detail="Failed to create text")
         except Exception as e:
@@ -33,22 +34,24 @@ class TextService:
         try:
             text = await self.collection.find_one({"_id": ObjectId(text_id)})
             if text:
+                text["_id"] = str(text["_id"])
                 return TrainingTextInDB(**text)
             return None
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
     async def update_text(self, text_id: str, text_update: TrainingTextUpdate) -> TrainingTextInDB:
-        text_dict = text_update.dict(exclude_unset=True)
-        text_dict["updated_at"] = datetime.utcnow()
-        
         try:
+            text_dict = text_update.model_dump(exclude_unset=True)
+            text_dict["updated_at"] = datetime.utcnow()
+            
             await self.collection.update_one(
                 {"_id": ObjectId(text_id)},
                 {"$set": text_dict}
             )
             updated_text = await self.collection.find_one({"_id": ObjectId(text_id)})
             if updated_text:
+                updated_text["_id"] = str(updated_text["_id"])
                 return TrainingTextInDB(**updated_text)
             raise HTTPException(status_code=404, detail="Text not found")
         except Exception as e:
@@ -69,6 +72,11 @@ class TextService:
                 
             cursor = self.collection.find(query).skip(skip).limit(limit)
             texts = await cursor.to_list(length=limit)
+            
+            # Convert ObjectId to string for each document
+            for text in texts:
+                text["_id"] = str(text["_id"])
+                
             return [TrainingTextInDB(**text) for text in texts]
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
