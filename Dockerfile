@@ -25,5 +25,5 @@ CMD ["gunicorn", \
      "--graceful-timeout", "300", \
      "--max-requests", "1000", \
      "--max-requests-jitter", "50", \
-     "tts_linkedin:app", \
+     "main:app", \
      "--bind", "0.0.0.0:8000"]
