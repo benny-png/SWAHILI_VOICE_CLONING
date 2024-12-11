@@ -18,8 +18,11 @@ class PyObjectId(str):
         return str(v)
 
     @classmethod
-    def __modify_schema__(cls, field_schema):
-        field_schema.update(type="string")
+    def __get_pydantic_json_schema__(
+        cls, schema: JsonSchemaValue, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        schema.update(type="string")
+        return schema
 
 class TextStatus(str, Enum):
     PENDING = "pending"
@@ -34,8 +37,7 @@ class TrainingText(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        json_encoders = {ObjectId: str}
+    model_config = dict(json_encoders={ObjectId: str})
 
 class TrainingTextCreate(BaseModel):
     client_id: str
@@ -49,11 +51,13 @@ class TrainingTextUpdate(BaseModel):
     status: Optional[TextStatus] = None
 
 class TrainingTextInDB(TrainingText):
-    id: Annotated[PyObjectId, Field(alias="_id", default_factory=PyObjectId)]
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
 
-    class Config:
-        json_encoders = {ObjectId: str}
-        populate_by_name = True
+    model_config = dict(
+        json_encoders={ObjectId: str},
+        populate_by_name=True,
+        arbitrary_types_allowed=True
+    )
 
 class TTSRequest(BaseModel):
     text: str
