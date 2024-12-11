@@ -4,6 +4,7 @@ from ..models.schemas import TrainingTextCreate, TrainingTextUpdate, TrainingTex
 from bson import ObjectId
 from datetime import datetime
 from fastapi.responses import StreamingResponse
+from app.config import settings
 import csv
 import io
 from fastapi import HTTPException

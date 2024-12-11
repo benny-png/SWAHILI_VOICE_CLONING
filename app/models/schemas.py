@@ -4,6 +4,7 @@ from typing import Optional, Annotated
 from datetime import datetime
 from enum import Enum
 from bson import ObjectId
+from pydantic_core import CoreSchema, core_schema
 
 class PyObjectId(str):
     @classmethod
@@ -13,8 +14,8 @@ class PyObjectId(str):
         return str(value)
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, source_type, handler):
-        return handler("string")
+    def __get_pydantic_core_schema__(cls, source_type, _handler) -> CoreSchema:
+        return core_schema.str_schema()
 
 class TextStatus(str, Enum):
     PENDING = "pending"
