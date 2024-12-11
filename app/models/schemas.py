@@ -1,25 +1,25 @@
 # app/models/schemas.py
-from pydantic import BaseModel, Field
-from typing import Optional, Any
+from pydantic import BaseModel, Field, GetJsonSchemaHandler
+from pydantic.json_schema import JsonSchemaValue
+from typing import Optional, Any, Annotated
 from datetime import datetime
 from enum import Enum
 from bson import ObjectId
 
-class PyObjectId(ObjectId):
+class PyObjectId(str):
     @classmethod
     def __get_validators__(cls):
         yield cls.validate
 
     @classmethod
     def validate(cls, v):
-        if not ObjectId.is_valid(v):
+        if not isinstance(v, (str, ObjectId)):
             raise ValueError("Invalid ObjectId")
-        return ObjectId(v)
+        return str(v)
 
     @classmethod
-    def __get_pydantic_json_schema__(cls, field_schema: Any, field: Any) -> Any:
+    def __modify_schema__(cls, field_schema):
         field_schema.update(type="string")
-        return field_schema
 
 class TextStatus(str, Enum):
     PENDING = "pending"
@@ -35,7 +35,7 @@ class TrainingText(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
-        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
 
 class TrainingTextCreate(BaseModel):
     client_id: str
@@ -49,10 +49,9 @@ class TrainingTextUpdate(BaseModel):
     status: Optional[TextStatus] = None
 
 class TrainingTextInDB(TrainingText):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: Annotated[PyObjectId, Field(alias="_id", default_factory=PyObjectId)]
 
     class Config:
-        arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
         populate_by_name = True
 
