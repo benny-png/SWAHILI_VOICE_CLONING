@@ -7,7 +7,9 @@ from fastapi.responses import StreamingResponse
 from app.config import settings
 import csv
 import io
-from fastapi import HTTPException
+import codecs
+from fastapi import HTTPException, UploadFile, HTTPException
+
 
 class TextService:
     def __init__(self):
@@ -101,6 +103,44 @@ class TextService:
             return 0
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+        
+    async def import_training_data_csv(self, file: UploadFile) -> int:
+        if not file.filename.endswith('.csv'):
+            raise HTTPException(status_code=400, detail="Only CSV files are supported")
+        
+        try:
+            # Read CSV file
+            csvReader = csv.DictReader(codecs.iterdecode(file.file, 'utf-8'))
+            texts = []
+            
+            for row in csvReader:
+                # Validate required fields
+                required_fields = ['client_id', 'path', 'sentence']
+                if not all(field in row for field in required_fields):
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"CSV must contain columns: {', '.join(required_fields)}"
+                    )
+                
+                text_dict = {
+                    "client_id": str(row["client_id"]),
+                    "path": row["path"],
+                    "sentence": row["sentence"],
+                    "status": "pending",
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }
+                texts.append(text_dict)
+            
+            if texts:
+                result = await self.collection.insert_many(texts)
+                return len(result.inserted_ids)
+            return 0
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
+        finally:
+            file.file.close()
 
     async def export_texts_to_csv(self, status: str = None) -> StreamingResponse:
         try:

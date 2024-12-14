@@ -1,5 +1,5 @@
 # app/main.py
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from .services.tts_service import generate_audio, is_swahili
 from .services.text_service import TextService
@@ -121,3 +121,20 @@ async def tts_original(request: TTSRequest):
     bytes_io.seek(0)
     
     return StreamingResponse(bytes_io, media_type="audio/wav")
+
+
+
+@app.post("/import-training-data-csv/")
+async def import_training_data_csv(
+    file: UploadFile = File(...),
+    service: TextService = Depends(get_text_service)
+):
+    """
+    Import training data from CSV file.
+    CSV should have columns: client_id, path, sentence
+    """
+    count = await service.import_training_data_csv(file)
+    return {
+        "message": f"Successfully imported {count} training texts",
+        "imported_count": count
+    }
