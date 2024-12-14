@@ -75,7 +75,7 @@ def generate_audio(text: str, model_name: str) -> Tuple[np.ndarray, int]:
         # Add pause after sentence (except for the last sentence)
         audio_segments.append(audio_segment)
         if sentence != sentences[-1]:
-            audio_segments.append(np.zeros(int(model.config.sampling_rate * 0.07)))  # 0.5s pause
+            audio_segments.append(np.zeros(int(model.config.sampling_rate * 0.02)))  # 0.5s pause
     
     # Combine all segments
     final_audio = np.concatenate(audio_segments)
