@@ -65,23 +65,37 @@ class TextService:
             return result.deleted_count > 0
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+        
 
-    async def list_texts(self, skip: int = 0, limit: int = 10, status: str = None):
+    async def list_texts(self, skip: int = 0, limit: int | None = None, status: str = None):
         try:
             query = {}
             if status:
                 query["status"] = status
-                
-            cursor = self.collection.find(query).skip(skip).limit(limit)
-            texts = await cursor.to_list(length=limit)
             
+            # Create base cursor
+            cursor = self.collection.find(query)
+            
+            # Apply skip if provided
+            if skip > 0:
+                cursor = cursor.skip(skip)
+            
+            # Apply limit if provided, otherwise fetch all
+            if limit is not None:
+                cursor = cursor.limit(limit)
+                texts = await cursor.to_list(length=limit)
+            else:
+                texts = await cursor.to_list(None)  # None means no limit
+                
             # Convert ObjectId to string for each document
             for text in texts:
                 text["_id"] = str(text["_id"])
                 
             return [TrainingTextInDB(**text) for text in texts]
+            
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+        
 
     async def import_training_data(self, data: list[dict]) -> int:
         try:

@@ -39,11 +39,23 @@ async def get_text_service():
     return TextService()
 
 # Training text endpoints
-@app.post("/texts/", response_model=TrainingTextInDB)
-async def create_text(text: TrainingTextCreate, service: TextService = Depends(get_text_service)):
-    if not is_swahili(text.sentence):
-        raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
-    return await service.create_text(text)
+@app.get("/texts/", response_model=list[TrainingTextInDB])
+async def list_texts(
+    skip: int = 0,
+    limit: int | None = None,
+    status: str = None,
+    service: TextService = Depends(get_text_service)
+):
+    """
+    List training texts with optional pagination and status filter.
+    
+    Parameters:
+    - skip: Number of records to skip (default: 0)
+    - limit: Maximum number of records to return (default: None, returns all)
+    - status: Filter by status (pending/approved/rejected)
+    """
+    texts = await service.list_texts(skip=skip, limit=limit, status=status)
+    return texts
 
 @app.get("/texts/{text_id}", response_model=TrainingTextInDB)
 async def get_text(text_id: str, service: TextService = Depends(get_text_service)):
