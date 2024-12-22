@@ -32,7 +32,8 @@ app.add_event_handler("shutdown", close_mongo_connection)
 
 # Models
 finetuned_model_name = "Benjamin-png/swahili-mms-tts-finetuned"
-original_model_name = "Benjamin-png/swahili-mms-tts-Briget_580_clips-finetuned"
+bridget_model_name = "Benjamin-png/swahili-mms-tts-Briget_580_clips-finetuned"
+emanuela_model_name = "Benjamin-png/swahili-mms-tts-Emmanuela_700_clips-finetuned"
 
 # Dependencies
 async def get_text_service():
@@ -126,7 +127,22 @@ async def tts_original(request: TTSRequest):
     if not is_swahili(request.text):
         raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
     
-    audio, sample_rate = generate_audio(request.text, original_model_name)
+    audio, sample_rate = generate_audio(request.text, bridget_model_name)
+    
+    bytes_io = io.BytesIO()
+    scipy.io.wavfile.write(bytes_io, sample_rate, (audio * 32767).astype(np.int16))
+    bytes_io.seek(0)
+    
+    return StreamingResponse(bytes_io, media_type="audio/wav")
+
+
+
+@app.post("/tts/emanuela")
+async def tts_original(request: TTSRequest):
+    if not is_swahili(request.text):
+        raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
+    
+    audio, sample_rate = generate_audio(request.text, emanuela_model_name)
     
     bytes_io = io.BytesIO()
     scipy.io.wavfile.write(bytes_io, sample_rate, (audio * 32767).astype(np.int16))
