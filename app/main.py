@@ -212,7 +212,7 @@ async def debug_number_conversion(request: TTSRequest):
 
 
 # Readme file path
-README_PATH = Path(__file__).parent.parent / "README.md"
+README_PATH = "readme.md"
 
 @app.get("/readme", response_class=PlainTextResponse)
 async def get_readme():
