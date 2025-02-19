@@ -3,17 +3,22 @@ from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from .services.tts_service import generate_audio, is_swahili
 from .services.text_service import TextService
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse, PlainTextResponse
 from .models.schemas import (
     TrainingTextCreate, 
     TrainingTextUpdate, 
     TrainingTextInDB,
     TTSRequest
 )
+
+import os
+from pathlib import Path
 from .database.mongodb import connect_to_mongo, close_mongo_connection
+from tarakimu import num_to_words
 import io
 import scipy.io.wavfile
 import numpy as np
+import re
 
 app = FastAPI()
 
@@ -34,6 +39,22 @@ app.add_event_handler("shutdown", close_mongo_connection)
 finetuned_model_name = "Benjamin-png/swahili-mms-tts-finetuned"
 bridget_model_name = "Benjamin-png/swahili-mms-tts-Briget_580_clips-finetuned"
 emanuela_model_name = "Benjamin-png/swahili-mms-tts-Emmanuela_700_clips-finetuned"
+
+def normalize_numbers(text: str) -> str:
+    """
+    Convert any numbers in the text to their Swahili word equivalents.
+    """
+    def replace_number(match):
+        number = match.group(0)
+        try:
+            if '.' in number:
+                return num_to_words(float(number))
+            return num_to_words(number)
+        except ValueError:
+            return number
+    
+    number_pattern = r'\b\d+(?:\.\d+)?\b'
+    return re.sub(number_pattern, replace_number, text)
 
 # Dependencies
 async def get_text_service():
@@ -108,13 +129,15 @@ async def export_training_data(
 ):
     return await service.export_texts_to_csv(status)
 
-# TTS endpoints
+# TTS endpoints with number normalization
 @app.post("/tts/benny")
 async def tts_finetuned(request: TTSRequest):
     if not is_swahili(request.text):
         raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
     
-    audio, sample_rate = generate_audio(request.text, finetuned_model_name)
+    # Normalize numbers in the text
+    normalized_text = normalize_numbers(request.text)
+    audio, sample_rate = generate_audio(normalized_text, finetuned_model_name)
     
     bytes_io = io.BytesIO()
     scipy.io.wavfile.write(bytes_io, sample_rate, (audio * 32767).astype(np.int16))
@@ -127,30 +150,30 @@ async def tts_original(request: TTSRequest):
     if not is_swahili(request.text):
         raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
     
-    audio, sample_rate = generate_audio(request.text, bridget_model_name)
+    # Normalize numbers in the text
+    normalized_text = normalize_numbers(request.text)
+    audio, sample_rate = generate_audio(normalized_text, bridget_model_name)
     
     bytes_io = io.BytesIO()
     scipy.io.wavfile.write(bytes_io, sample_rate, (audio * 32767).astype(np.int16))
     bytes_io.seek(0)
     
     return StreamingResponse(bytes_io, media_type="audio/wav")
-
-
 
 @app.post("/tts/emanuela")
 async def tts_original(request: TTSRequest):
     if not is_swahili(request.text):
         raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
     
-    audio, sample_rate = generate_audio(request.text, emanuela_model_name)
+    # Normalize numbers in the text
+    normalized_text = normalize_numbers(request.text)
+    audio, sample_rate = generate_audio(normalized_text, emanuela_model_name)
     
     bytes_io = io.BytesIO()
     scipy.io.wavfile.write(bytes_io, sample_rate, (audio * 32767).astype(np.int16))
     bytes_io.seek(0)
     
     return StreamingResponse(bytes_io, media_type="audio/wav")
-
-
 
 @app.post("/import-training-data-csv/")
 async def import_training_data_csv(
@@ -166,3 +189,53 @@ async def import_training_data_csv(
         "message": f"Successfully imported {count} training texts",
         "imported_count": count
     }
+
+
+    # Add this new endpoint to your main.py
+@app.post("/debug/number-conversion")
+async def debug_number_conversion(request: TTSRequest):
+    """
+    Debug endpoint to test number normalization.
+    Returns both original and normalized text for comparison.
+    """
+    if not is_swahili(request.text):
+        raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
+    
+    original_text = request.text
+    normalized_text = normalize_numbers(request.text)
+    
+    return {
+        "original_text": original_text,
+        "normalized_text": normalized_text,
+    }
+
+
+
+# Readme file path
+README_PATH = Path(__file__).parent.parent / "README.md"
+
+@app.get("/readme", response_class=PlainTextResponse)
+async def get_readme():
+    """
+    Returns the API readme as text/markdown
+    """
+    try:
+        with open(README_PATH, "r") as file:
+            content = file.read()
+        return content
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="README.md not found")
+
+@app.get("/readme/download")
+async def download_readme():
+    """
+    Downloads the API readme as a markdown file
+    """
+    if not os.path.isfile(README_PATH):
+        raise HTTPException(status_code=404, detail="README.md not found")
+    
+    return FileResponse(
+        path=README_PATH,
+        filename="swahili-voice-api-readme.md",
+        media_type="text/markdown"
+    )

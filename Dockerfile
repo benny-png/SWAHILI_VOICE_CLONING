@@ -26,4 +26,4 @@ CMD ["gunicorn", \
      "--max-requests", "1000", \
      "--max-requests-jitter", "50", \
      "main:app", \
-     "--bind", "0.0.0.0:8000"]
+     "--bind", "0.0.0.0:80"]
