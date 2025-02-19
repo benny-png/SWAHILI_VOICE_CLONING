@@ -13,6 +13,28 @@ This API provides endpoints for:
 
 ### Documentation Endpoints
 
+## Example Usage
+Using curl:
+```bash
+curl -X POST "http://localhost:8000/tts/briget" \
+     -H "Content-Type: application/json" \
+     -d '{"text":"Kijana huyu ni msataarabu sana sana"}' \
+     --output output.wav
+```
+
+Using Python requests:
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/tts/briget",
+    json={"text": "Kijana huyu ni msataarabu sana sana"}
+)
+
+with open("output.wav", "wb") as f:
+    f.write(response.content)
+```
+
 #### Get API Documentation
 ```
 GET /docs
