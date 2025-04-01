@@ -13,3 +13,6 @@ pydantic-settings==2.1.0
 gunicorn==21.2.0
 python-multipart==0.0.6
 tarakimu
+pyjwt
+passlib[bcrypt]
+python-jose[cryptography]
