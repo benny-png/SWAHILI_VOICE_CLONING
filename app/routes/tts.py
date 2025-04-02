@@ -45,7 +45,36 @@ def normalize_numbers(text: str) -> str:
 
 
 # TTS endpoints with number normalization
-@router.post("/benny")
+@router.post("/benny", description="""
+Generate speech using Benny's voice model. The text will be automatically normalized, converting numbers to their Swahili word equivalents.
+
+Example using curl:
+```bash
+curl -X POST "http://localhost:8000/tts/benny" \\
+     -H "Content-Type: application/json" \\
+     -d '{"text":"Nina umri wa miaka 25"}' \\
+     --output benny_speech.wav
+```
+
+Example using Python:
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/tts/benny",
+    json={"text": "Nina umri wa miaka 25"}
+)
+
+with open("benny_speech.wav", "wb") as f:
+    f.write(response.content)
+```
+
+The API will:
+1. Validate that the input text is in Swahili
+2. Convert any numbers to their Swahili word equivalents
+3. Generate speech using Benny's voice model
+4. Return a WAV audio file
+""")
 async def tts_finetuned(request: TTSRequest):
     if not is_swahili(request.text):
         raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
@@ -60,7 +89,36 @@ async def tts_finetuned(request: TTSRequest):
     
     return StreamingResponse(bytes_io, media_type="audio/wav")
 
-@router.post("/briget")
+@router.post("/briget", description="""
+Generate speech using Briget's voice model. The text will be automatically normalized, converting numbers to their Swahili word equivalents.
+
+Example using curl:
+```bash
+curl -X POST "http://localhost:8000/tts/briget" \\
+     -H "Content-Type: application/json" \\
+     -d '{"text":"Nina shilingi 100.50"}' \\
+     --output briget_speech.wav
+```
+
+Example using Python:
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/tts/briget",
+    json={"text": "Nina shilingi 100.50"}
+)
+
+with open("briget_speech.wav", "wb") as f:
+    f.write(response.content)
+```
+
+The API will:
+1. Validate that the input text is in Swahili
+2. Convert any numbers to their Swahili word equivalents
+3. Generate speech using Briget's voice model
+4. Return a WAV audio file
+""")
 async def tts_original(request: TTSRequest):
     if not is_swahili(request.text):
         raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
@@ -75,7 +133,36 @@ async def tts_original(request: TTSRequest):
     
     return StreamingResponse(bytes_io, media_type="audio/wav")
 
-@router.post("/emanuela")
+@router.post("/emanuela", description="""
+Generate speech using Emanuela's voice model. The text will be automatically normalized, converting numbers to their Swahili word equivalents.
+
+Example using curl:
+```bash
+curl -X POST "http://localhost:8000/tts/emanuela" \\
+     -H "Content-Type: application/json" \\
+     -d '{"text":"Nataka kununua vitu 10"}' \\
+     --output emanuela_speech.wav
+```
+
+Example using Python:
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/tts/emanuela",
+    json={"text": "Nataka kununua vitu 10"}
+)
+
+with open("emanuela_speech.wav", "wb") as f:
+    f.write(response.content)
+```
+
+The API will:
+1. Validate that the input text is in Swahili
+2. Convert any numbers to their Swahili word equivalents
+3. Generate speech using Emanuela's voice model
+4. Return a WAV audio file
+""")
 async def tts_original(request: TTSRequest):
     if not is_swahili(request.text):
         raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
@@ -92,7 +179,32 @@ async def tts_original(request: TTSRequest):
 
 
     # Add this new endpoint to your main.py
-@router.post("/debug/number-conversion")
+@router.post("/debug/number-conversion", description="""
+Debug endpoint to test how numbers in Swahili text will be normalized before speech generation.
+
+Example using curl:
+```bash
+curl -X POST "http://localhost:8000/tts/debug/number-conversion" \\
+     -H "Content-Type: application/json" \\
+     -d '{"text":"Nina umri wa miaka 25 na shilingi 100.50"}'
+```
+
+Example using Python:
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/tts/debug/number-conversion",
+    json={"text": "Nina umri wa miaka 25 na shilingi 100.50"}
+)
+print(response.json())
+```
+
+The API will:
+1. Validate that the input text is in Swahili
+2. Convert any numbers to their Swahili word equivalents
+3. Return both the original and normalized text
+""")
 async def debug_number_conversion(request: TTSRequest):
     """
     Debug endpoint to test number normalization.

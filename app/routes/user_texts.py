@@ -49,7 +49,33 @@ async def get_user_text_service():
     return UserTextService()
 
 # User training text endpoints
-@router.get("/texts", response_model=list[UserTrainingTextInDB])
+@router.get("/texts", response_model=list[UserTrainingTextInDB], description="""
+List training texts for the authenticated user with optional filtering.
+
+Example using curl:
+```bash
+curl -X GET "http://localhost:8000/user/texts?skip=0&limit=10&status=pending" \\
+     -H "Authorization: Bearer your_access_token"
+```
+
+Example using Python:
+```python
+import requests
+
+headers = {"Authorization": "Bearer your_access_token"}
+response = requests.get(
+    "http://localhost:8000/user/texts",
+    params={"skip": 0, "limit": 10, "status": "pending"},
+    headers=headers
+)
+print(response.json())
+```
+
+The API will:
+1. Validate the access token
+2. Return the user's training texts with pagination
+3. Optionally filter by status (pending/approved/rejected)
+""")
 async def list_user_texts(
     current_user: Annotated[str, Depends(get_current_user)],
     skip: int = 0,
@@ -65,7 +91,32 @@ async def list_user_texts(
         user_id=current_user  # Use authenticated user_id
     )
 
-@router.get("/texts/{text_id}", response_model=UserTrainingTextInDB)
+@router.get("/texts/{text_id}", response_model=UserTrainingTextInDB, description="""
+Get a specific training text by ID.
+
+Example using curl:
+```bash
+curl -X GET "http://localhost:8000/user/texts/123456789" \\
+     -H "Authorization: Bearer your_access_token"
+```
+
+Example using Python:
+```python
+import requests
+
+headers = {"Authorization": "Bearer your_access_token"}
+response = requests.get(
+    "http://localhost:8000/user/texts/123456789",
+    headers=headers
+)
+print(response.json())
+```
+
+The API will:
+1. Validate the access token
+2. Check if the text exists and belongs to the user
+3. Return the text details
+""")
 async def get_user_text(
     text_id: str,
     current_user: Annotated[str, Depends(get_current_user)],
@@ -77,7 +128,42 @@ async def get_user_text(
         raise HTTPException(status_code=404, detail="Text not found or unauthorized")
     return text
 
-@router.put("/texts/{text_id}", response_model=UserTrainingTextInDB)
+@router.put("/texts/{text_id}", response_model=UserTrainingTextInDB, description="""
+Update an existing training text.
+
+Example using curl:
+```bash
+curl -X PUT "http://localhost:8000/user/texts/123456789" \\
+     -H "Authorization: Bearer your_access_token" \\
+     -H "Content-Type: application/json" \\
+     -d '{
+           "sentence": "Updated Swahili text",
+           "status": "approved"
+         }'
+```
+
+Example using Python:
+```python
+import requests
+
+headers = {"Authorization": "Bearer your_access_token"}
+response = requests.put(
+    "http://localhost:8000/user/texts/123456789",
+    headers=headers,
+    json={
+        "sentence": "Updated Swahili text",
+        "status": "approved"
+    }
+)
+print(response.json())
+```
+
+The API will:
+1. Validate the access token
+2. Check if the text exists and belongs to the user
+3. Update the specified fields
+4. Return the updated text
+""")
 async def update_user_text(
     text_id: str,
     text_update: UserTrainingTextUpdate,
@@ -90,7 +176,33 @@ async def update_user_text(
         raise HTTPException(status_code=404, detail="Text not found or unauthorized")
     return await service.update_text(text_id, text_update)
 
-@router.delete("/texts/{text_id}", response_model=dict)
+@router.delete("/texts/{text_id}", response_model=dict, description="""
+Delete a training text.
+
+Example using curl:
+```bash
+curl -X DELETE "http://localhost:8000/user/texts/123456789" \\
+     -H "Authorization: Bearer your_access_token"
+```
+
+Example using Python:
+```python
+import requests
+
+headers = {"Authorization": "Bearer your_access_token"}
+response = requests.delete(
+    "http://localhost:8000/user/texts/123456789",
+    headers=headers
+)
+print(response.json())
+```
+
+The API will:
+1. Validate the access token
+2. Check if the text exists and belongs to the user
+3. Delete the text
+4. Return a success message
+""")
 async def delete_user_text(
     text_id: str,
     current_user: Annotated[str, Depends(get_current_user)],
@@ -103,7 +215,45 @@ async def delete_user_text(
     success = await service.delete_text(text_id)
     return {"message": "Text deleted successfully"}
 
-@router.post("/texts/import-csv/{user_id}", response_model=dict)
+@router.post("/texts/import-csv/{user_id}", response_model=dict, description="""
+Import training data from a CSV file.
+
+Example using curl:
+```bash
+curl -X POST "http://localhost:8000/user/texts/import-csv/your_user_id" \\
+     -H "Authorization: Bearer your_access_token" \\
+     -F "file=@training_data.csv"
+```
+
+Example using Python:
+```python
+import requests
+
+headers = {"Authorization": "Bearer your_access_token"}
+files = {"file": open("training_data.csv", "rb")}
+response = requests.post(
+    "http://localhost:8000/user/texts/import-csv/your_user_id",
+    headers=headers,
+    files=files
+)
+print(response.json())
+```
+
+The API will:
+1. Validate the access token
+2. Verify the user is importing for their own account
+3. Process and import the CSV data
+4. Return the number of imported texts
+
+CSV Format:
+- Required columns: path, sentence
+- Example:
+  ```csv
+  path,sentence
+  /audio/sample1.wav,Habari za asubuhi
+  /audio/sample2.wav,Karibu nyumbani
+  ```
+""")
 async def import_training_data_csv(
     user_id: str,
     current_user: Annotated[str, Depends(get_current_user)],

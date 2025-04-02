@@ -8,6 +8,8 @@ This API provides endpoints for:
 1. Text-to-speech conversion using various Swahili voice models
 2. Managing training text data for voice models
 3. Importing and exporting training data
+4. User authentication and management
+5. User-specific training text management
 
 ## API Endpoints
 
@@ -195,9 +197,97 @@ Exports training data to CSV format.
 **Query Parameters:**
 - `status` (optional): Filter by status (pending/approved/rejected)
 
+### User Training Text Management
+
+#### List User's Training Texts
+```
+GET /user/texts/
+```
+Returns a list of training texts for the authenticated user.
+
+**Query Parameters:**
+- `skip` (optional): Number of records to skip (default: 0)
+- `limit` (optional): Maximum number of records to return
+- `status` (optional): Filter by status (pending/approved/rejected)
+
+#### Update User's Training Text
+```
+PUT /user/texts/{text_id}
+```
+Updates a specific training text owned by the user.
+
+**Request Body:**
+```json
+{
+  "path": "Optional updated path",
+  "sentence": "Updated Swahili text",
+  "status": "approved"
+}
+```
+
+#### Import User Training Data from CSV
+```
+POST /user/texts/import-csv/{user_id}
+```
+Imports training data from a CSV file for a specific user.
+
+**Request:** Form data with CSV file
+**CSV Format:** Should contain columns: path, sentence
+
 ## Authentication
 
-The API currently allows all origins (`*`) through CORS middleware. (For current prototyping phase).
+The API implements secure user authentication:
+
+### Register New User
+```
+POST /auth/register/
+```
+Creates a new user account.
+
+**Request Body:**
+```json
+{
+  "username": "user123",
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+### User Login
+```
+POST /auth/login/
+```
+Authenticates a user and returns an access token.
+
+**Request Body:**
+```json
+{
+  "username": "user@example.com",
+  "password": "securepassword"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "token_type": "bearer",
+  "user": {
+    "id": "user_id",
+    "username": "user123",
+    "email": "user@example.com"
+  }
+}
+```
+
+### Protected Endpoints
+All user-specific endpoints require authentication using the Bearer token received from login.
+
+Example:
+```bash
+curl -X GET "http://localhost:8000/user/texts" \
+     -H "Authorization: Bearer your_access_token"
+```
 
 ## Database
 
@@ -229,3 +319,12 @@ The API performs audio normalization to ensure consistent output quality:
 ## Error Handling
 
 The API validates that input text is in Swahili before processing TTS requests and returns appropriate HTTP error codes for invalid requests.
+
+## Security
+
+The API implements several security measures:
+- Password hashing using secure algorithms
+- JWT-based authentication
+- Protected routes requiring valid access tokens
+- User-specific data isolation
+- CORS middleware (currently allows all origins for prototyping)

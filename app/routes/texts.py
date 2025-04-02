@@ -29,7 +29,34 @@ async def get_text_service():
 
 
 # Training text endpoints
-@router.get("/", response_model=list[TrainingTextInDB])
+@router.get("/", response_model=list[TrainingTextInDB], description="""
+List all training texts with optional pagination and filtering.
+
+Example using curl:
+```bash
+curl -X GET "http://localhost:8000/texts?skip=0&limit=10&status=pending"
+```
+
+Example using Python:
+```python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/texts",
+    params={
+        "skip": 0,
+        "limit": 10,
+        "status": "pending"
+    }
+)
+print(response.json())
+```
+
+The API will:
+1. Return a list of training texts
+2. Apply pagination if specified
+3. Filter by status if provided (pending/approved/rejected)
+""")
 async def list_texts(
     skip: int = 0,
     limit: int | None = None,
@@ -47,14 +74,70 @@ async def list_texts(
     texts = await service.list_texts(skip=skip, limit=limit, status=status)
     return texts
 
-@router.get("/{text_id}", response_model=TrainingTextInDB)
+@router.get("/{text_id}", response_model=TrainingTextInDB, description="""
+Get a specific training text by ID.
+
+Example using curl:
+```bash
+curl -X GET "http://localhost:8000/texts/123456789"
+```
+
+Example using Python:
+```python
+import requests
+
+response = requests.get(
+    "http://localhost:8000/texts/123456789"
+)
+print(response.json())
+```
+
+The API will:
+1. Check if the text exists
+2. Return the text details
+""")
 async def get_text(text_id: str, service: TextService = Depends(get_text_service)):
     text = await service.get_text(text_id)
     if not text:
         raise HTTPException(status_code=404, detail="Text not found")
     return text
 
-@router.put("/{text_id}", response_model=TrainingTextInDB)
+@router.put("/{text_id}", response_model=TrainingTextInDB, description="""
+Update an existing training text.
+
+Example using curl:
+```bash
+curl -X PUT "http://localhost:8000/texts/123456789" \\
+     -H "Content-Type: application/json" \\
+     -d '{
+           "client_id": "client123",
+           "path": "/audio/updated.wav",
+           "sentence": "Updated Swahili text",
+           "status": "approved"
+         }'
+```
+
+Example using Python:
+```python
+import requests
+
+response = requests.put(
+    "http://localhost:8000/texts/123456789",
+    json={
+        "client_id": "client123",
+        "path": "/audio/updated.wav",
+        "sentence": "Updated Swahili text",
+        "status": "approved"
+    }
+)
+print(response.json())
+```
+
+The API will:
+1. Check if the text exists
+2. Update the specified fields
+3. Return the updated text
+""")
 async def update_text(
     text_id: str, 
     text_update: TrainingTextUpdate, 
@@ -65,14 +148,85 @@ async def update_text(
         raise HTTPException(status_code=404, detail="Text not found")
     return text
 
-@router.delete("/{text_id}")
+@router.delete("/{text_id}", description="""
+Delete a training text.
+
+Example using curl:
+```bash
+curl -X DELETE "http://localhost:8000/texts/123456789"
+```
+
+Example using Python:
+```python
+import requests
+
+response = requests.delete(
+    "http://localhost:8000/texts/123456789"
+)
+print(response.json())
+```
+
+The API will:
+1. Check if the text exists
+2. Delete the text
+3. Return a success message
+""")
 async def delete_text(text_id: str, service: TextService = Depends(get_text_service)):
     success = await service.delete_text(text_id)
     if not success:
         raise HTTPException(status_code=404, detail="Text not found")
     return {"message": "Text deleted successfully"}
 
-@router.post("/import-training-data/")
+@router.post("/import-training-data/", description="""
+Import training data in JSON format.
+
+Example using curl:
+```bash
+curl -X POST "http://localhost:8000/texts/import-training-data" \\
+     -H "Content-Type: application/json" \\
+     -d '[
+           {
+             "client_id": "123",
+             "path": "/audio/sample1.wav",
+             "sentence": "Habari za asubuhi"
+           },
+           {
+             "client_id": "124",
+             "path": "/audio/sample2.wav",
+             "sentence": "Karibu nyumbani"
+           }
+         ]'
+```
+
+Example using Python:
+```python
+import requests
+
+data = [
+    {
+        "client_id": "123",
+        "path": "/audio/sample1.wav",
+        "sentence": "Habari za asubuhi"
+    },
+    {
+        "client_id": "124",
+        "path": "/audio/sample2.wav",
+        "sentence": "Karibu nyumbani"
+    }
+]
+
+response = requests.post(
+    "http://localhost:8000/texts/import-training-data",
+    json=data
+)
+print(response.json())
+```
+
+The API will:
+1. Validate the JSON data format
+2. Import all provided training texts
+3. Return the number of imported texts
+""")
 async def import_training_data(
     data: list[dict],
     service: TextService = Depends(get_text_service)
@@ -87,7 +241,41 @@ async def export_training_data(
 ):
     return await service.export_texts_to_csv(status)
 
-@router.post("/import-training-data-csv/")
+@router.post("/import-training-data-csv/", description="""
+Import training data from a CSV file.
+
+Example using curl:
+```bash
+curl -X POST "http://localhost:8000/texts/import-training-data-csv" \\
+     -F "file=@training_data.csv"
+```
+
+Example using Python:
+```python
+import requests
+
+files = {"file": open("training_data.csv", "rb")}
+response = requests.post(
+    "http://localhost:8000/texts/import-training-data-csv",
+    files=files
+)
+print(response.json())
+```
+
+The API will:
+1. Validate the CSV file format
+2. Process and import the data
+3. Return the number of imported texts
+
+CSV Format:
+- Required columns: client_id, path, sentence
+- Example:
+  ```csv
+  client_id,path,sentence
+  123,/audio/sample1.wav,Habari za asubuhi
+  124,/audio/sample2.wav,Karibu nyumbani
+  ```
+""")
 async def import_training_data_csv(
     file: UploadFile = File(...),
     service: TextService = Depends(get_text_service)
