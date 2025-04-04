@@ -14,6 +14,16 @@ app = FastAPI(
     servers=[{"url": "https://swahilivoice.xyz", "description": "Production server"}]
 )
 
+
+@app.middleware("http")
+async def set_scheme_https(request, call_next):
+    if request.headers.get("x-forwarded-proto") == "https":
+        request.scope["scheme"] = "https"
+    response = await call_next(request)
+    return response
+
+
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
