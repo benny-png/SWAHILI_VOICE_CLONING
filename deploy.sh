@@ -19,7 +19,7 @@ check_health() {
     local container_name=$1
     local max_attempts=30
     local attempt=1
-    
+
     echo "Checking container health..."
     while [ $attempt -le $max_attempts ]
     do
@@ -63,9 +63,10 @@ if ! docker run -d \
     --graceful-timeout 300 \
     --max-requests 1000 \
     --max-requests-jitter 50 \
+    --access-logfile - \
     main:app \
     --bind 0.0.0.0:80; then
-    
+
     echo -e "${RED}Failed to start new container${NC}"
     exit 1
 fi
@@ -76,11 +77,11 @@ sleep 5  # Give the container some time to start up
 
 if check_health "swahili-voice-clone-blue"; then
     echo -e "${GREEN}New container is healthy!${NC}"
-    
+
     # Tag the successful deployment
     docker tag swahili-voice-clone:new swahili-voice-clone:latest
     docker rmi swahili-voice-clone:new 2>/dev/null
-    
+
     echo -e "${GREEN}=== Deployment Successful ===${NC}"
     echo -e "${BLUE}Container Details:${NC}"
     docker ps -f name="swahili-voice-clone-blue"
@@ -91,4 +92,4 @@ else
     docker rmi swahili-voice-clone:new 2>/dev/null
     echo -e "${RED}Deployment failed.${NC}"
     exit 1
-fi 
+fi
