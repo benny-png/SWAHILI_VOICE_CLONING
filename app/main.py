@@ -10,8 +10,7 @@ from .routes.texts import router as texts_router
 from .routes.tts import router as tts_router
 from .routes.utils import router as utils_router
 
-app = FastAPI(servers=[{"url": "https://swahilivoice.xyz", "description": "Production server"},
-            {"url": "http://localhost:8000/", "description": "dev server"}])
+app = FastAPI(servers=[{"url": "https://swahilivoice.xyz", "description": "Production server"}])
 
 # servers=[{"url": "https://swahilivoice.xyz", "description": "Production server"},
 #            {"url": "http://localhost:8000/", "description": "dev server"}]
