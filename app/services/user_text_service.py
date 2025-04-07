@@ -1,12 +1,14 @@
 from ..database.mongodb import Database
 from ..models.schemas import UserTrainingTextCreate, UserTrainingTextUpdate, UserTrainingTextInDB
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 import csv
 import io
 import codecs
 from app.config import settings
+from app.services.user_service import UserService
 
 class UserTextService:
     def __init__(self):
@@ -18,8 +20,8 @@ class UserTextService:
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         text_dict = text.model_dump()
-        text_dict["created_at"] = datetime.utcnow()
-        text_dict["updated_at"] = datetime.utcnow()
+        text_dict["created_at"] = datetime.now(timezone.utc)
+        text_dict["updated_at"] = datetime.now(timezone.utc)
         text_dict["status"] = "pending"
         result = await self.collection.insert_one(text_dict)
         created_text = await self.collection.find_one({"_id": result.inserted_id})
@@ -35,9 +37,9 @@ class UserTextService:
             return UserTrainingTextInDB(**text)
         return None
 
-    async def update_text(self, text_id: str, text_update: UserTrainingTextUpdate) -> UserTrainingTextInDB:
+    async def update_text(self, text_id: str, text_update: UserTrainingTextUpdate,user_id:str) -> UserTrainingTextInDB:
         text_dict = text_update.model_dump(exclude_unset=True)
-        text_dict["updated_at"] = datetime.utcnow()
+        text_dict["updated_at"] = datetime.now(timezone.utc)
         await self.collection.update_one(
             {"_id": ObjectId(text_id)},
             {"$set": text_dict}
@@ -46,6 +48,8 @@ class UserTextService:
         if updated_text:
             updated_text["id"] = str(updated_text["_id"])
             del updated_text["_id"]
+            user_service = UserService()
+            await user_service.increment_total_audio_length(user_id, length=text_update.audio_length)
             return UserTrainingTextInDB(**updated_text)
         raise HTTPException(status_code=404, detail="Text not found")
 
@@ -90,8 +94,8 @@ class UserTextService:
                     "user_id": user_id,
                     "sentence": row["sentence"],
                     "status": "pending",
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
                 }
                 texts.append(text_dict)
             if texts:
@@ -102,3 +106,45 @@ class UserTextService:
             raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
         finally:
             file.file.close()
+
+    async def export_texts_to_csv(self, user_id:str, status: str = None) -> StreamingResponse:
+        try:
+            print(f"Starting export for user: {user_id}, status: {status}")
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(['text_id', 'path', 'sentence', 'status','audio_length'])
+        
+            
+            query = {}
+            if status:
+                query["status"] = status
+            if user_id:
+                query["user_id"] = user_id
+        
+            print(f"Finding texts with query: {query}")
+            cursor = self.collection.find(query)
+        
+            count = 0
+            async for text in cursor:
+                count += 1
+                writer.writerow([
+                    text['_id'],
+                    text.get('path', ''),  # Use get with default in case 'path' is missing
+                    text['sentence'],
+                    text.get('status', 'pending'),
+                    text.get('audio_length','')
+                ])
+        
+            print(f"Found {count} texts")
+            output.seek(0)
+        
+            return StreamingResponse(
+                iter([output.getvalue()]),
+                media_type="text/csv",
+                headers={
+                    'Content-Disposition': f'attachment; filename=training_texts_{datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")}.csv'
+                }
+            )
+        except Exception as e:
+            print(f"Error in export_texts_to_csv: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))

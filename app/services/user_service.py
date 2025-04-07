@@ -1,11 +1,12 @@
 from ..database.mongodb import Database
 from ..models.schemas import UserCreate, UserUpdate, UserInDB, UserLogin, Token, LoginResponse, UserResponse
 from bson import ObjectId
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Depends
 from app.config import settings
 from passlib.context import CryptContext
 import jwt
+
 from fastapi.security import OAuth2PasswordBearer
 
 # Password hashing setup
@@ -32,9 +33,9 @@ class UserService:
     def create_access_token(self, data: dict, expires_delta: timedelta = None):
         to_encode = data.copy()
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = datetime.now(timezone.utc) + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(minutes=15)
+            expire = datetime.now(timezone.utc) + timedelta(minutes=15)
         to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         return encoded_jwt
@@ -49,8 +50,8 @@ class UserService:
                 "username": user.username,
                 "email": user.email,
                 "hashed_password": self.get_password_hash(user.password),
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
             }
             
             result = await self.collection.insert_one(user_dict)
@@ -106,8 +107,8 @@ class UserService:
 
     async def update_user(self, user_id: str, user_update: UserUpdate) -> UserInDB:
         try:
-            user_dict = user_update.dict(exclude_unset=True)
-            user_dict["updated_at"] = datetime.utcnow()
+            user_dict = user_update.model_dump(exclude_unset=True)
+            user_dict["updated_at"] = datetime.now(timezone.utc)
             
             await self.collection.update_one(
                 {"_id": ObjectId(user_id)},
@@ -121,6 +122,35 @@ class UserService:
             raise HTTPException(status_code=404, detail="User not found")
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+        
+    
+    async def increment_total_audio_length(self, user_id: str, length: int):
+        try:
+            result = await self.collection.update_one(
+                {"_id": ObjectId(user_id)},
+                {
+                    "$inc": {"total_audio_length": length},
+                    "$set": {"updated_at": datetime.now(timezone.utc)}
+                }
+            )
+            if result.modified_count == 0:
+                raise Exception("User not found or no change made.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to increment audio length: {e}")
+        
+        
+    async def get_total_audio_length(self, user_id: str):
+        try:
+            user = await self.collection.find_one(
+                {"_id": ObjectId(user_id)},
+                {"total_audio_length": 1}  # Only fetch this field
+            )
+            if not user:
+                return None
+            return user.get("total_audio_length", 0)
+        except Exception as e:
+            raise RuntimeError(f"Failed to fetch total audio length: {e}")        
+
 
     async def delete_user(self, user_id: str) -> bool:
         try:
@@ -144,3 +174,5 @@ class UserService:
             return [UserInDB(**user) for user in users]
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+    
+    

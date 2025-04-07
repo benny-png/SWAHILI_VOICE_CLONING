@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import Optional, Annotated
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from bson import ObjectId
 from pydantic_core import CoreSchema, core_schema
@@ -26,8 +26,8 @@ class TrainingText(BaseModel):
     path: str
     sentence: str
     status: TextStatus = TextStatus.PENDING
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -76,8 +76,9 @@ class UserInDB(BaseModel):
     username: str
     email: EmailStr
     hashed_password: str  # Stored hashed password
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    total_audio_length: Optional[int] = None
+    created_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
     
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -101,6 +102,7 @@ class UserResponse(BaseModel):
     username: str
     email: str
     
+    
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
@@ -120,8 +122,9 @@ class UserTrainingText(BaseModel):
     path: Optional[str] = None
     sentence: str
     status: TextStatus = TextStatus.PENDING
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
+    audio_length: Optional[int] = None
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -136,6 +139,7 @@ class UserTrainingTextUpdate(BaseModel):
     path: Optional[str] = None
     sentence: Optional[str] = None
     status: Optional[TextStatus] = None
+    audio_length: Optional[int] = None
 
 class UserTrainingTextInDB(UserTrainingText):
     id: PyObjectId = Field(alias="_id", default_factory=PyObjectId)

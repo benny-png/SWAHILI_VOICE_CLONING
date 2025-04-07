@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from typing import Annotated
 from jose import JWTError, jwt
 from pydantic import BaseModel
+from app.services.user_service import UserService
 from app.services.user_text_service import UserTextService
 from app.config import settings
 from fastapi.responses import StreamingResponse, FileResponse, PlainTextResponse
@@ -47,6 +48,9 @@ router = APIRouter(
 
 async def get_user_text_service():
     return UserTextService()
+
+async def get_user_service():
+    return UserService()
 
 # User training text endpoints
 @router.get("/texts", response_model=list[UserTrainingTextInDB], description="""
@@ -169,12 +173,17 @@ async def update_user_text(
     text_update: UserTrainingTextUpdate,
     current_user: Annotated[str, Depends(get_current_user)],
     service: UserTextService = Depends(get_user_text_service)
-):
+):  
     """Update an existing user training text"""
     text = await service.get_text(text_id)
     if not text or text.user_id != current_user:
         raise HTTPException(status_code=404, detail="Text not found or unauthorized")
-    return await service.update_text(text_id, text_update)
+    user_id = current_user
+    if user_id:
+        return await service.update_text(text_id, text_update,user_id)
+    else:
+        raise HTTPException(status_code=404, detail="user not found or unauthorized")
+
 
 @router.delete("/texts/{text_id}", response_model=dict, description="""
 Delete a training text.
@@ -266,3 +275,22 @@ async def import_training_data_csv(
     count = await service.import_training_data_csv(file, user_id)
     return {"message": f"Successfully imported {count} training texts"}
 
+@router.get("/total_audio_length")
+async def get_total_audio_length(
+    user_id: str,
+    current_user: Annotated[str, Depends(get_current_user)],
+    service: UserService = Depends(get_user_service)
+):
+    if user_id != current_user:
+        raise HTTPException(status_code=403, detail="Cannot get data for another user")
+    
+    total_audio_length = await service.get_total_audio_length(user_id)
+    return {"total_audio_length": total_audio_length}
+
+@router.get("/export-training-data/")
+async def export_training_data(
+    current_user: Annotated[str, Depends(get_current_user)],
+    status: str = None,
+    service: UserTextService = Depends(get_user_text_service),
+):
+    return await service.export_texts_to_csv(user_id=current_user,status=status)
