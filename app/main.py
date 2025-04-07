@@ -10,18 +10,19 @@ from .routes.texts import router as texts_router
 from .routes.tts import router as tts_router
 from .routes.utils import router as utils_router
 
-app = FastAPI()
+app = FastAPI(servers=[{"url": "https://swahilivoice.xyz", "description": "Production server"},
+            {"url": "http://localhost:8000/", "description": "dev server"}])
 
 # servers=[{"url": "https://swahilivoice.xyz", "description": "Production server"},
 #            {"url": "http://localhost:8000/", "description": "dev server"}]
 
 
-# @app.middleware("http")
-# async def set_scheme_https(request, call_next):
-#     if request.headers.get("x-forwarded-proto") == "https":
-#         request.scope["scheme"] = "https"
-#     response = await call_next(request)
-#     return response
+@app.middleware("http")
+async def set_scheme_https(request, call_next):
+    if request.headers.get("x-forwarded-proto") == "https":
+        request.scope["scheme"] = "https"
+    response = await call_next(request)
+    return response
 
 
 
