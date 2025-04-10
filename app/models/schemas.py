@@ -21,6 +21,11 @@ class TextStatus(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
 
+class Status(BaseModel):
+    pending_texts:int
+    approved_texts:int
+    rejected_texts:int
+    total_texts:int
 class TrainingText(BaseModel):
     client_id: str
     path: str
@@ -79,6 +84,7 @@ class UserInDB(BaseModel):
     email: EmailStr
     hashed_password: str  # Stored hashed password
     total_audio_length: Optional[int] = None
+    text_status:Optional[Status] = None
     authorization_level:Optional[int] = None
     created_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
@@ -152,3 +158,4 @@ class UserTrainingTextInDB(UserTrainingText):
         json_encoders={ObjectId: str},
         populate_by_name=True
     )
+

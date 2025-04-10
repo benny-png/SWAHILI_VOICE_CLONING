@@ -180,7 +180,9 @@ async def update_user_text(
         raise HTTPException(status_code=404, detail="Text not found or unauthorized")
     user_id = current_user
     if user_id:
-        return await service.update_text(text_id, text_update,user_id)
+        result = await service.update_text(text_id, text_update,user_id)
+        await service.update_user_status_from_usertexts(user_id)
+        return result
     else:
         raise HTTPException(status_code=404, detail="user not found or unauthorized")
 

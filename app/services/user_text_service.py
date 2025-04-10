@@ -1,5 +1,5 @@
 from ..database.mongodb import Database
-from ..models.schemas import UserTrainingTextCreate, UserTrainingTextUpdate, UserTrainingTextInDB
+from ..models.schemas import UserTrainingTextCreate, UserTrainingTextUpdate, UserTrainingTextInDB,Status
 from bson import ObjectId
 from datetime import datetime, timezone
 from fastapi import HTTPException, UploadFile
@@ -152,3 +152,49 @@ class UserTextService:
         except Exception as e:
             print(f"Error in export_texts_to_csv: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
+        
+    async def update_user_status_from_usertexts(self, user_id: str):
+        # Directly count all statuses in a single aggregation
+        pipeline = [
+            {"$match": {"user_id": user_id}},
+            {
+                "$group": {
+                    "_id": None,
+                    "pending": {"$sum": {"$cond": [{"$eq": ["$status", "pending"]}, 1, 0]}},
+                    "approved": {"$sum": {"$cond": [{"$eq": ["$status", "approved"]}, 1, 0]}},
+                    "rejected": {"$sum": {"$cond": [{"$eq": ["$status", "rejected"]}, 1, 0]}},
+                    "total": {"$sum": 1}
+                }
+            }
+        ]
+
+        # Execute the aggregation and get results
+        result = await self.collection.aggregate(pipeline).to_list(length=1)
+    
+        # Create default counts in case no documents are found
+        counts = {
+            "pending_texts": 0,
+            "approved_texts": 0,
+            "rejected_texts": 0,
+            "total_texts": 0
+        }
+    
+        # Update with actual counts if we found results
+        if result and len(result) > 0:
+            counts["pending_texts"] = result[0].get("pending", 0)
+            counts["approved_texts"] = result[0].get("approved", 0)
+            counts["rejected_texts"] = result[0].get("rejected", 0)
+            counts["total_texts"] = result[0].get("total", 0)
+
+        # Update user document with new counts
+        await self.db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {
+                "$set": {
+                    "text_status": counts,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        print(f"Updated user {user_id} with text status: {counts}")
+        return counts
