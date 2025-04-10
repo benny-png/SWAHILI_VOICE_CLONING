@@ -9,12 +9,10 @@ from .routes.user_texts import router as user_texts_router
 from .routes.texts import router as texts_router
 from .routes.tts import router as tts_router
 from .routes.utils import router as utils_router
+from .routes.admin import router as admin_router
 
-app = FastAPI(servers=[{"url": "https://swahilivoice.xyz", "description": "Production server"}])
 
-# servers=[{"url": "https://swahilivoice.xyz", "description": "Production server"},
-#            {"url": "http://localhost:8000/", "description": "dev server"}]
-
+app = FastAPI() 
 
 @app.middleware("http")
 async def set_scheme_https(request, call_next):
@@ -42,6 +40,7 @@ app.add_event_handler("shutdown", close_mongo_connection)
 
 # Register routers
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(user_texts_router)
 app.include_router(texts_router)
 app.include_router(tts_router)
