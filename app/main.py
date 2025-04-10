@@ -2,6 +2,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database.mongodb import connect_to_mongo, close_mongo_connection
+import logging
+import time
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 # Import route files
 from .routes.auth import router as auth_router
@@ -10,11 +15,34 @@ from .routes.texts import router as texts_router
 from .routes.tts import router as tts_router
 from .routes.utils import router as utils_router
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("api.log")
+    ]
+)
+logger = logging.getLogger("swahili-voice-api")
+
 app = FastAPI()
 
 # servers=[{"url": "https://swahilivoice.xyz", "description": "Production server"},
 #            {"url": "http://localhost:8000/", "description": "dev server"}]
 
+# Request timing middleware
+class TimingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        response.headers["X-Process-Time"] = str(process_time)
+        logger.info(f"Request to {request.url.path} took {process_time:.4f} seconds")
+        return response
+
+# Add timing middleware
+app.add_middleware(TimingMiddleware)
 
 @app.middleware("http")
 async def set_scheme_https(request, call_next):
@@ -37,6 +65,11 @@ app.add_middleware(
 # Event handlers
 app.add_event_handler("startup", connect_to_mongo)
 app.add_event_handler("shutdown", close_mongo_connection)
+
+# Log startup event
+@app.on_event("startup")
+async def startup_event():
+    logger.info("API server started")
 
 
 

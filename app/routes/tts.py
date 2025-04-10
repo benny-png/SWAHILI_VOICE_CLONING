@@ -18,8 +18,10 @@ import io
 import scipy.io.wavfile
 import numpy as np
 import re
+import time
+import logging
 
-
+logger = logging.getLogger("swahili-voice-api")
 
 router = APIRouter(prefix="/tts", tags=["tts"])
 
@@ -75,13 +77,27 @@ The API will:
 3. Return a WAV audio file
 """)
 async def tts_finetuned(request: TTSRequest):
-    # Normalize numbers in the text
-    normalized_text = normalize_numbers(request.text)
-    audio, sample_rate = generate_audio(normalized_text, finetuned_model_name)
+    logger.info(f"TTS request received for Benny's voice: '{request.text[:30]}...' ({len(request.text)} chars)")
     
+    # Normalize numbers in the text
+    start_time = time.time()
+    normalized_text = normalize_numbers(request.text)
+    normalization_time = time.time() - start_time
+    logger.info(f"Text normalization completed in {normalization_time:.4f} seconds")
+    
+    # Generate audio
+    start_time = time.time()
+    audio, sample_rate = generate_audio(normalized_text, finetuned_model_name)
+    generation_time = time.time() - start_time
+    logger.info(f"Audio generation completed in {generation_time:.4f} seconds")
+    
+    # Convert to WAV
+    start_time = time.time()
     bytes_io = io.BytesIO()
     scipy.io.wavfile.write(bytes_io, sample_rate, (audio * 32767).astype(np.int16))
     bytes_io.seek(0)
+    conversion_time = time.time() - start_time
+    logger.info(f"Audio conversion completed in {conversion_time:.4f} seconds")
     
     return StreamingResponse(bytes_io, media_type="audio/wav")
 
@@ -115,13 +131,27 @@ The API will:
 3. Return a WAV audio file
 """)
 async def tts_original(request: TTSRequest):
-    # Normalize numbers in the text
-    normalized_text = normalize_numbers(request.text)
-    audio, sample_rate = generate_audio(normalized_text, bridget_model_name)
+    logger.info(f"TTS request received for Briget's voice: '{request.text[:30]}...' ({len(request.text)} chars)")
     
+    # Normalize numbers in the text
+    start_time = time.time()
+    normalized_text = normalize_numbers(request.text)
+    normalization_time = time.time() - start_time
+    logger.info(f"Text normalization completed in {normalization_time:.4f} seconds")
+    
+    # Generate audio
+    start_time = time.time()
+    audio, sample_rate = generate_audio(normalized_text, bridget_model_name)
+    generation_time = time.time() - start_time
+    logger.info(f"Audio generation completed in {generation_time:.4f} seconds")
+    
+    # Convert to WAV
+    start_time = time.time()
     bytes_io = io.BytesIO()
     scipy.io.wavfile.write(bytes_io, sample_rate, (audio * 32767).astype(np.int16))
     bytes_io.seek(0)
+    conversion_time = time.time() - start_time
+    logger.info(f"Audio conversion completed in {conversion_time:.4f} seconds")
     
     return StreamingResponse(bytes_io, media_type="audio/wav")
 
@@ -155,13 +185,27 @@ The API will:
 3. Return a WAV audio file
 """)
 async def tts_original(request: TTSRequest):
-    # Normalize numbers in the text
-    normalized_text = normalize_numbers(request.text)
-    audio, sample_rate = generate_audio(normalized_text, emanuela_model_name)
+    logger.info(f"TTS request received for Emanuela's voice: '{request.text[:30]}...' ({len(request.text)} chars)")
     
+    # Normalize numbers in the text
+    start_time = time.time()
+    normalized_text = normalize_numbers(request.text)
+    normalization_time = time.time() - start_time
+    logger.info(f"Text normalization completed in {normalization_time:.4f} seconds")
+    
+    # Generate audio
+    start_time = time.time()
+    audio, sample_rate = generate_audio(normalized_text, emanuela_model_name)
+    generation_time = time.time() - start_time
+    logger.info(f"Audio generation completed in {generation_time:.4f} seconds")
+    
+    # Convert to WAV
+    start_time = time.time()
     bytes_io = io.BytesIO()
     scipy.io.wavfile.write(bytes_io, sample_rate, (audio * 32767).astype(np.int16))
     bytes_io.seek(0)
+    conversion_time = time.time() - start_time
+    logger.info(f"Audio conversion completed in {conversion_time:.4f} seconds")
     
     return StreamingResponse(bytes_io, media_type="audio/wav")
 
@@ -197,10 +241,17 @@ async def debug_number_conversion(request: TTSRequest):
     Debug endpoint to test number normalization.
     Returns both original and normalized text for comparison.
     """
+    logger.info(f"Number conversion debug request received: '{request.text[:30]}...'")
+    
     original_text = request.text
+    
+    start_time = time.time()
     normalized_text = normalize_numbers(request.text)
+    normalization_time = time.time() - start_time
+    logger.info(f"Number normalization completed in {normalization_time:.4f} seconds")
     
     return {
         "original_text": original_text,
         "normalized_text": normalized_text,
+        "process_time_seconds": normalization_time
     }
