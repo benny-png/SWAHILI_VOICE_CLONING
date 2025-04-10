@@ -70,15 +70,11 @@ with open("benny_speech.wav", "wb") as f:
 ```
 
 The API will:
-1. Validate that the input text is in Swahili
-2. Convert any numbers to their Swahili word equivalents
-3. Generate speech using Benny's voice model
-4. Return a WAV audio file
+1. Convert any numbers to their Swahili word equivalents
+2. Generate speech using Benny's voice model
+3. Return a WAV audio file
 """)
 async def tts_finetuned(request: TTSRequest):
-    if not is_swahili(request.text):
-        raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
-    
     # Normalize numbers in the text
     normalized_text = normalize_numbers(request.text)
     audio, sample_rate = generate_audio(normalized_text, finetuned_model_name)
@@ -114,15 +110,11 @@ with open("briget_speech.wav", "wb") as f:
 ```
 
 The API will:
-1. Validate that the input text is in Swahili
-2. Convert any numbers to their Swahili word equivalents
-3. Generate speech using Briget's voice model
-4. Return a WAV audio file
+1. Convert any numbers to their Swahili word equivalents
+2. Generate speech using Briget's voice model
+3. Return a WAV audio file
 """)
 async def tts_original(request: TTSRequest):
-    if not is_swahili(request.text):
-        raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
-    
     # Normalize numbers in the text
     normalized_text = normalize_numbers(request.text)
     audio, sample_rate = generate_audio(normalized_text, bridget_model_name)
@@ -158,15 +150,11 @@ with open("emanuela_speech.wav", "wb") as f:
 ```
 
 The API will:
-1. Validate that the input text is in Swahili
-2. Convert any numbers to their Swahili word equivalents
-3. Generate speech using Emanuela's voice model
-4. Return a WAV audio file
+1. Convert any numbers to their Swahili word equivalents
+2. Generate speech using Emanuela's voice model
+3. Return a WAV audio file
 """)
 async def tts_original(request: TTSRequest):
-    if not is_swahili(request.text):
-        raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
-    
     # Normalize numbers in the text
     normalized_text = normalize_numbers(request.text)
     audio, sample_rate = generate_audio(normalized_text, emanuela_model_name)
@@ -201,18 +189,14 @@ print(response.json())
 ```
 
 The API will:
-1. Validate that the input text is in Swahili
-2. Convert any numbers to their Swahili word equivalents
-3. Return both the original and normalized text
+1. Convert any numbers to their Swahili word equivalents
+2. Return both the original and normalized text
 """)
 async def debug_number_conversion(request: TTSRequest):
     """
     Debug endpoint to test number normalization.
     Returns both original and normalized text for comparison.
     """
-    if not is_swahili(request.text):
-        raise HTTPException(status_code=400, detail="The provided text is not in Swahili.")
-    
     original_text = request.text
     normalized_text = normalize_numbers(request.text)
     

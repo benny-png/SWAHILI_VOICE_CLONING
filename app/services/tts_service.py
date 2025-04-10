@@ -2,7 +2,6 @@
 from transformers import pipeline, AutoTokenizer, VitsModel
 import torch
 import numpy as np
-from langdetect import detect, LangDetectException
 from functools import lru_cache
 from ..config import settings
 import re
@@ -30,10 +29,11 @@ def split_into_sentences(text: str) -> List[str]:
     return [s.strip() for s in sentences if s.strip()]
 
 def is_swahili(text: str) -> bool:
-    try:
-        return detect(text) == 'sw'
-    except LangDetectException:
-        return False
+    """
+    Dummy function that always returns True.
+    The language detection feature has been removed as it was not working properly.
+    """
+    return True
 
 def generate_audio(text: str, model_name: str) -> Tuple[np.ndarray, int]:
     """Generate audio for text, handling it sentence by sentence."""
