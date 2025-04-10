@@ -173,10 +173,10 @@ class UserService:
                 user["id"] = str(user["_id"])
                 del user["_id"]
 
-            total_hours = sum(user.get("total_audio_length", 0) for user in users)
+            total_seconds = sum(user.get("total_audio_length", 0) for user in users)
 
             return {
-                "total_hours_recorded": total_hours,
+                "total_seconds_recorded": total_seconds,
                 "users": [UserInDB(**user) for user in users]
             }
         except Exception as e:
