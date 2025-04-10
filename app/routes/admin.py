@@ -73,7 +73,7 @@ async def delete_user(
     return  {"error":"unable to delete user"}
 
 @router.delete("/delete/user/texts",description="delete user's texts")
-async def delete_user(
+async def delete_user_texts(
     user_id: str,
     service2: UserTextService=Depends(get_user_text_service)
 ):
