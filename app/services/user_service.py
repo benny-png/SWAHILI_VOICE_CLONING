@@ -154,7 +154,7 @@ class UserService:
 
     async def delete_user(self, user_id: str) -> bool:
         try:
-            result = await self.collection.delete_one({"_id": ObjectId(user_id)})
+            result = await self.collection.delete_one({"_id": ObjectId(user_id)})    
             return result.deleted_count > 0
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
@@ -164,15 +164,22 @@ class UserService:
             cursor = self.collection.find().skip(skip)
             if limit is not None:
                 cursor = cursor.limit(limit)
-                users = await cursor.to_list(length=limit)
-            else:
-                users = await cursor.to_list(None)
-                
+            
+            users = await cursor.to_list(length=None)
+            if not users:
+                raise HTTPException(status_code=404, detail="No users found")
+
             for user in users:
                 user["id"] = str(user["_id"])
                 del user["_id"]
-            return [UserInDB(**user) for user in users]
+
+            total_hours = sum(user.get("total_audio_length", 0) for user in users)
+
+            return {
+                "total_hours_recorded": total_hours,
+                "users": [UserInDB(**user) for user in users]
+            }
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     
     

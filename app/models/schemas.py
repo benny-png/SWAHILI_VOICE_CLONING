@@ -69,6 +69,8 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     email: Optional[EmailStr] = None
+    authorization_level:Optional[int] = None
+    updated_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
 
 # User in database schema (stored hashed password)
 class UserInDB(BaseModel):
@@ -77,6 +79,7 @@ class UserInDB(BaseModel):
     email: EmailStr
     hashed_password: str  # Stored hashed password
     total_audio_length: Optional[int] = None
+    authorization_level:Optional[int] = None
     created_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda:datetime.now(timezone.utc))
     

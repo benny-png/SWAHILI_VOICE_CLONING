@@ -56,6 +56,10 @@ class UserTextService:
     async def delete_text(self, text_id: str) -> bool:
         result = await self.collection.delete_one({"_id": ObjectId(text_id)})
         return result.deleted_count > 0
+    
+    async def delete_texts_by_user(self, user_id: str) -> int:
+        result = await self.collection.delete_many({"user_id": user_id})
+        return result.deleted_count > 0
 
     async def list_texts(self, skip: int = 0, limit: int | None = None, status: str = None, user_id: str = None):
         query = {}
