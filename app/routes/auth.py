@@ -142,6 +142,7 @@ async def reset_password_page(token: str):
         });
         if (response.ok) {
             alert('Password reset successfully');
+            window.location.href = 'https://swahilivoicetz.netlify.app/login';
         } else {
             alert('Error resetting password');
         }
