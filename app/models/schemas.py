@@ -159,3 +159,7 @@ class UserTrainingTextInDB(UserTrainingText):
         populate_by_name=True
     )
 
+class ResetPassword(BaseModel):
+    token:str
+    password:str
+    confirm_password:str

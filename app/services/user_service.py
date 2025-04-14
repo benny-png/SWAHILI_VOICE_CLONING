@@ -1,11 +1,16 @@
 from ..database.mongodb import Database
-from ..models.schemas import UserCreate, UserUpdate, UserInDB, UserLogin, Token, LoginResponse, UserResponse
+from ..models.schemas import UserCreate, UserUpdate, UserInDB, UserLogin, ResetPassword, LoginResponse, UserResponse
 from bson import ObjectId
 from datetime import datetime, timedelta, timezone
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException,  BackgroundTasks
 from app.config import settings
 from passlib.context import CryptContext
 import jwt
+from pydantic import EmailStr
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+import logging
+
+logger = logging.getLogger("swahili-voice-api")
 
 from fastapi.security import OAuth2PasswordBearer
 
@@ -15,7 +20,16 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for token authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
+conf = ConnectionConfig(
+    MAIL_USERNAME=settings.MAIL_USERNAME,
+    MAIL_PASSWORD=settings.MAIL_PASSWORD,
+    MAIL_FROM=settings.MAIL_FROM,
+    MAIL_PORT=settings.MAIL_PORT,
+    MAIL_SERVER=settings.MAIL_SERVER,
+    MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
+    MAIL_STARTTLS=settings.MAIL_STARTTLS,
+    USE_CREDENTIALS=settings.USE_CREDENTIALS
+)
 class UserService:
     def __init__(self):
         self.db = Database.client[settings.DB_NAME]
@@ -181,5 +195,69 @@ class UserService:
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    async def log_email_result(message, result):
+        if result:
+            logger.info(f"Email to {message.recipients} sent successfully")
+        else:
+            logger.error(f"Failed to send email to {message.recipients}")
+
+# Then in your code:
     
+
+    async def send_reset_email(self, email: EmailStr, background_tasks: BackgroundTasks):
+        # Find user
+        user = await self.collection.find_one({"email": email})
+        if not user:
+            raise HTTPException(status_code=404, detail="Email not found")
+
+        # Generate reset token
+        token_data = {"sub": str(user["_id"])}
+        access_token = self.create_access_token(token_data, timedelta(hours=1))
+        reset_link = f"{settings.FRONTEND_URL}/auth/request/reset-password?token={access_token}"
+
+        # Create email message
+        message = MessageSchema(
+            subject="Reset your password",
+            recipients=[email],
+            body=f"Click the link to reset your password: {reset_link}",
+            subtype="html"
+        )
+
+        # Define a helper function to handle sending and logging
+        async def send_email_with_logging():
+            try:
+                fm = FastMail(conf)
+                await fm.send_message(message)  # Await the send operation
+                logger.info(f"Email sent successfully to {email}")
+            except Exception as e:
+                logger.error(f"Failed to send email to {email}: {str(e)}")
+                raise  # Re-raise to handle in background task
+
+        # Add to background tasks with error handling
+        background_tasks.add_task(send_email_with_logging)
+
+        return {"msg": "Password reset link sent"}
     
+    async def reset_password(self,data:ResetPassword ):
+        if data.password != data.confirm_password:
+            raise HTTPException(status_code=400, detail="Passwords do not match")
+
+        try:
+            payload = jwt.decode(data.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            user_id = payload.get("sub")
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Token expired")
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        hashed_pw = self.get_password_hash(data.password)
+
+        result = await self.collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"hashed_password": hashed_pw}}
+        )
+
+        if result.modified_count == 0:
+            raise HTTPException(status_code=400, detail="Password reset failed")
+
+        return {"msg": "Password successfully reset"}
